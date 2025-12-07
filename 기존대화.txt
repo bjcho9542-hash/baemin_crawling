@@ -1,0 +1,77 @@
+# 배달의민족 크롤링 프로젝트 - 세션 컨텍스트 요약
+
+## 프로젝트 목표
+가게배달 가능한 업체 정보 수집:
+- 상호명, 주소, 전화번호
+- 최근주문수, 전체리뷰수
+- 배달타입 (가게배달/알뜰배달/한집배달) + 배달팁
+
+## 기술 스택
+- Python 3.13 + uiautomator2 3.5.0
+- Android 에뮬레이터: Medium_Phone_API_36.1 (emulator-5554)
+- ADB 경로: C:/Android/Sdk/platform-tools/adb.exe
+
+## 진행 상태 (4단계 중 2단계 진행 중)
+
+### 1단계: 음식배달 더보기 클릭 ✅
+```python
+elem = d(descriptionContains='더보기')
+elem.click()
+```
+
+### 2단계: 가게 클릭 → 배달타입 펼치기 → 정보 추출 🔄
+- [x] 스크롤해서 "기본순" 찾기
+- [x] 가게 클릭 (예: 감성낙곱새 강남점)
+- [x] 배달타입 펼치기 클릭 완료
+- [ ] 가게정보·원산지 클릭 (진행 중)
+- [ ] 정보 추출
+
+### 3단계: 반복 로직 + 엑셀 저장 ⏳
+### 4단계: GUI 씌우기 ⏳
+
+## 핵심 패턴
+
+### content-desc로 요소 찾기 (권장)
+```python
+d = u2.connect()
+elem = d(descriptionContains='펼쳐보기')
+elem.click()
+```
+
+### 현재 화면 요소 확인
+```python
+import uiautomator2 as u2
+import xml.etree.ElementTree as ET
+import sys
+sys.stdout.reconfigure(encoding='utf-8')
+
+d = u2.connect()
+xml = d.dump_hierarchy()
+root = ET.fromstring(xml)
+
+def find_all(node):
+    desc = node.attrib.get('content-desc', '')
+    bounds = node.attrib.get('bounds', '')
+    if desc:
+        print(f'{bounds}: {desc}')
+    for child in node:
+        find_all(child)
+find_all(root)
+```
+
+### 주요 content-desc 값들
+- "음식배달에서 더보기" → 더보기 버튼
+- "배달유형별 배달팁 접혀있음, 펼쳐보기" → 펼치기 버튼
+- "배달유형별 배달팁 펼쳐져있음, 접기" → 접기 버튼
+- "가게배달", "알뜰배달", "한집배달" → 배달타입
+- "총 30개 가게 중 N번째" → 가게 목록 인덱스
+
+## 현재 이슈
+"가게정보·원산지" 버튼이 content-desc/text에 안 잡힘
+→ WebView 내부라서 UI 덤프로 못 찾음
+→ 좌표 클릭 시도 중 (사진 영역과 겹쳐서 어려움)
+
+## 다음 작업
+1. 스크롤 조정해서 가게정보·원산지 버튼 클릭
+2. 가게 정보 추출 (상호명, 주소, 전화번호)
+3. 다음 가게로 이동하는 반복 로직 구현
