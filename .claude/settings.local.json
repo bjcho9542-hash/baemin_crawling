@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(dir \"c:\\Users\\두빈\\Desktop\\9542\\baemin_crawling\")"
+      "Bash(dir \"c:\\Users\\두빈\\Desktop\\9542\\baemin_crawling\")",
+      "Bash(dir:*)",
+      "Bash(git add:*)",
+      "Bash(git reset:*)"
     ],
     "deny": [],
     "ask": []
