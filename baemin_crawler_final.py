@@ -238,74 +238,80 @@ class BaeminCrawler:
                     y1 = int(match.group(2))
                     # 기본순 아래
                     if y1 > 기본순_y:
+                        # 가게명 추출: "가게명, 배달팁 X원" → "가게명"
+                        store_name = desc
+                        if ', 배달팁' in desc:
+                            store_name = desc.split(', 배달팁')[0]
+
                         # 제외: 배달타입, 거리, 가격, 별점, 리뷰수, 메뉴설명, UI요소 등
                         exclude = (
-                            # 배달타입
-                            desc in ['가게배달', '알뜰배달', '한집배달'] or
-                            '배달' in desc or
+                            # 배달타입/UI
+                            store_name in ['가게배달', '알뜰배달', '한집배달', '음식배달'] or
+                            '음식' in store_name or
                             # 거리/가격
-                            'km' in desc or
-                            '원,' in desc or
-                            '원)' in desc or
-                            '거리' in desc or
+                            'km' in store_name or
+                            '원,' in store_name or
+                            '원)' in store_name or
+                            '거리' in store_name or
                             # 별점/리뷰
-                            '별점' in desc or
-                            re.match(r'^\d+개$', desc) or
-                            re.match(r'^[\d.,]+개$', desc) or
-                            re.match(r'^[\d.]+$', desc) or
+                            '별점' in store_name or
+                            re.match(r'^\d+개$', store_name) or
+                            re.match(r'^[\d.,]+개$', store_name) or
+                            re.match(r'^[\d.]+$', store_name) or
                             # 광고/프로모션
-                            '추천' in desc or
-                            '광고' in desc or
-                            '받기' in desc or
-                            '하기' in desc or
-                            '빽보이' in desc or
-                            '카카오' in desc or
-                            '브랜드' in desc or
-                            '쿠폰' in desc or
-                            '할인' in desc or
-                            '혜택' in desc or
-                            '모아보기' in desc or
+                            '추천' in store_name or
+                            '광고' in store_name or
+                            '받기' in store_name or
+                            '하기' in store_name or
+                            '빽보이' in store_name or
+                            '카카오' in store_name or
+                            '브랜드' in store_name or
+                            '쿠폰' in store_name or
+                            '할인' in store_name or
+                            '혜택' in store_name or
+                            '모아보기' in store_name or
+                            '푸드페스타' in store_name or
                             # UI 요소
-                            '탭바' in desc or
-                            '탭' in desc or
-                            '홈' in desc or
-                            '뒤로' in desc or
-                            '검색' in desc or
-                            '장바구니' in desc or
-                            '스토어' in desc or
-                            '버튼' in desc or
-                            '알림' in desc or
-                            '도움말' in desc or
-                            '배민클럽' in desc or
+                            '탭바' in store_name or
+                            '탭' in store_name or
+                            '홈' in store_name or
+                            '뒤로' in store_name or
+                            '검색' in store_name or
+                            '장바구니' in store_name or
+                            '스토어' in store_name or
+                            '버튼' in store_name or
+                            '알림' in store_name or
+                            '도움말' in store_name or
+                            '배민클럽' in store_name or
                             # 상태바 요소
-                            '오후' in desc or
-                            '오전' in desc or
-                            'Mobile' in desc or
-                            '신호' in desc or
-                            '막대' in desc or
-                            '배터리' in desc or
-                            '퍼센트' in desc or
-                            '5G' in desc or
-                            '4G' in desc or
-                            'LTE' in desc or
-                            'Wi-Fi' in desc or
+                            '오후' in store_name or
+                            '오전' in store_name or
+                            'Mobile' in store_name or
+                            '신호' in store_name or
+                            '막대' in store_name or
+                            '배터리' in store_name or
+                            '퍼센트' in store_name or
+                            '5G' in store_name or
+                            '4G' in store_name or
+                            'LTE' in store_name or
+                            'Wi-Fi' in store_name or
                             # 기타
-                            '번째' in desc or
-                            '총' in desc or
-                            '방금' in desc or
-                            '비슷' in desc or
-                            '최소' in desc or
-                            '최대' in desc or
-                            '메뉴' in desc or
-                            '전체' in desc or
+                            '번째' in store_name or
+                            '총' in store_name or
+                            '방금' in store_name or
+                            '비슷' in store_name or
+                            '최소' in store_name or
+                            '최대' in store_name or
+                            '메뉴' in store_name or
+                            '전체' in store_name or
                             # 특수문자로 시작
-                            desc.startswith(',') or
-                            desc.startswith('.') or
-                            desc.replace('.', '').replace(',', '').isdigit()
+                            store_name.startswith(',') or
+                            store_name.startswith('.') or
+                            store_name.replace('.', '').replace(',', '').isdigit()
                         )
                         # 가게명: 2글자 이상, 30글자 이하
-                        if not exclude and 2 <= len(desc) <= 30:
-                            stores.append({'name': desc, 'y': y1})
+                        if not exclude and 2 <= len(store_name) <= 30:
+                            stores.append({'name': store_name, 'y': y1})
             for child in node:
                 find_stores(child)
         find_stores(root)
@@ -384,17 +390,24 @@ class BaeminCrawler:
                 if match:
                     y1 = int(match.group(2))
                     if y1 > 방금본가게_y:
+                        # 가게명 추출: "가게명, 배달팁 X원" → "가게명"
+                        store_name = desc
+                        if ', 배달팁' in desc:
+                            store_name = desc.split(', 배달팁')[0]
+
                         # 가게명 필터 (간단하게)
                         exclude = (
-                            '배달' in desc or 'km' in desc or '원' in desc or
-                            '별점' in desc or '개' in desc or '탭' in desc or
-                            '홈' in desc or '검색' in desc or '버튼' in desc or
-                            '오후' in desc or '오전' in desc or '방금' in desc or
-                            '비슷' in desc or '배민클럽' in desc or
-                            len(desc) < 2 or len(desc) > 30
+                            'km' in store_name or '음식' in store_name or
+                            '별점' in store_name or '개' in store_name or '탭' in store_name or
+                            '홈' in store_name or '검색' in store_name or '버튼' in store_name or
+                            '오후' in store_name or '오전' in store_name or '방금' in store_name or
+                            '비슷' in store_name or '배민클럽' in store_name or
+                            '푸드페스타' in store_name or '추천' in store_name or '광고' in store_name or
+                            store_name in ['가게배달', '알뜰배달', '한집배달', '음식배달'] or
+                            len(store_name) < 2 or len(store_name) > 30
                         )
                         if not exclude:
-                            stores.append({'name': desc, 'y': y1})
+                            stores.append({'name': store_name, 'y': y1})
             for child in node:
                 find_stores(child)
         find_stores(root)
@@ -612,10 +625,20 @@ class BaeminCrawler:
                     skip_names.append(new_store['name'])  # 방문한 가게 스킵 목록에 추가
                     print(f'      [완료] 상호명: {store_data.get("상호명", "")}')
 
-                    # 뒤로가기 직후 "방금 본 가게와 비슷해요!" 찾아서 아래 4개 매장 스킵
+                    # 뒤로가기 직후: 먼저 방금 방문한 가게를 화면에서 찾기 (위로 스크롤)
                     time.sleep(0.5)
 
-                    # 스크롤해서 "방금 본 가게와 비슷해요!" 찾기
+                    # 1단계: 방금 방문한 가게가 화면에 보이는지 확인, 없으면 위로 스크롤
+                    for scroll_up_try in range(5):
+                        elem_check = self.d(descriptionContains=new_store['name'])
+                        if elem_check.exists(timeout=1):
+                            break
+                        else:
+                            # 위로 스크롤
+                            self.d.swipe(540, 800, 540, 1500, duration=0.3)
+                            time.sleep(0.5)
+
+                    # 2단계: 스크롤해서 "방금 본 가게와 비슷해요!" 찾기
                     방금본_found = False
                     for scroll_try in range(5):
                         # "방금 본 가게" 있는지 확인
