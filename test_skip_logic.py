@@ -1,18 +1,18 @@
 # -*- coding: utf-8 -*-
 """
-배달의민족 크롤러 - 최종 버전
-가게배달 업체 정보 수집: 배달타입, 상호명, 주소, 전화번호, 최근주문수, 전체리뷰수
+테스트: 1개 매장 방문 후 "방금 본 가게와 비슷해요!" 스킵 로직 확인
+- 1개 매장 방문 → 뒤로가기
+- "방금 본 가게와 비슷해요!" 찾기
+- 건너뛸 4개 매장 이름 출력
+- 다음 검색할 매장 이름 출력
+- 여기서 멈춤
 """
 import uiautomator2 as u2
 import time
 import re
 import sys
-import os
-import pandas as pd
-from datetime import datetime
 import xml.etree.ElementTree as ET
 import cv2
-import numpy as np
 
 sys.stdout.reconfigure(encoding='utf-8')
 
@@ -324,9 +324,9 @@ class BaeminCrawler:
             if not is_dup:
                 unique.append(s)
 
-        # 마지막 방문 가게 아래 + "방금 본 가게와 비슷해요!" 아래 2개 건너뛰기
+        # 마지막 방문 가게 아래 + "방금 본 가게와 비슷해요!" 아래 4개 건너뛰기
         if last_store_y and 방금본가게_y:
-            # last_store_y 아래에서, 방금본가게_y 아래 2개 제외
+            # last_store_y 아래에서, 방금본가게_y 아래 4개 제외
             skip_count = 0
             filtered = []
             for s in unique:
@@ -403,22 +403,6 @@ class BaeminCrawler:
         stores.sort(key=lambda x: x['y'])
         return [s['name'] for s in stores[:4]]
 
-    def click_store_by_index(self, index):
-        """가게 목록에서 N번째 가게 클릭 (기본순 아래)"""
-        stores = self.get_stores_below_기본순()
-
-        if index <= len(stores):
-            store_name = stores[index - 1]['name']
-            elem = self.d(descriptionContains=store_name)
-            if elem.exists(timeout=3):
-                elem.click()
-                print(f'      [OK] {index}번째 가게 클릭: {store_name}')
-                time.sleep(2)
-                return True
-
-        print(f'      [WARN] {index}번째 가게 못 찾음')
-        return False
-
     def get_store_name_from_list(self):
         """가게 상세 페이지에서 가게명 추출"""
         texts = self.get_all_texts()
@@ -439,7 +423,6 @@ class BaeminCrawler:
             '전화번호': '',
             '최근주문수': '',
             '전체리뷰수': '',
-            '크롤링시간': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         }
 
         try:
@@ -488,21 +471,6 @@ class BaeminCrawler:
 
         return store_data
 
-    def save_to_excel(self, filename=None):
-        """엑셀 저장"""
-        if not self.stores:
-            print('[WARN] 저장할 데이터 없음')
-            return
-
-        if filename is None:
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            filename = f'baemin_stores_{timestamp}.xlsx'
-
-        df = pd.DataFrame(self.stores)
-        df.to_excel(filename, index=False)
-        print(f'[OK] 엑셀 저장 완료: {filename}')
-        print(f'     총 {len(self.stores)}개 가게')
-
     def go_to_store_list(self):
         """메인화면에서 음식배달 더보기 클릭 → 기본순 아래 가게 찾기"""
         print('[STEP 1] 음식배달에서 더보기 클릭')
@@ -531,45 +499,10 @@ class BaeminCrawler:
         print('      [WARN] 기본순 아래 가게 못 찾음')
         return False
 
-    def collect_all_store_names(self, max_stores=50):
-        """스크롤하면서 가게 이름 모두 수집 (1단계)"""
-        print('[PHASE 1] 가게 이름 수집 시작')
-        print('-' * 40)
-
-        all_names = []
-        no_new_count = 0
-        max_no_new = 5  # 5번 연속 새 가게 없으면 종료
-
-        while len(all_names) < max_stores and no_new_count < max_no_new:
-            stores = self.get_stores_below_기본순(passed_기본순=len(all_names) > 0)
-
-            new_count = 0
-            for s in stores:
-                if s['name'] not in all_names:
-                    all_names.append(s['name'])
-                    new_count += 1
-                    print(f'      {len(all_names)}. {s["name"]}')
-
-                    if len(all_names) >= max_stores:
-                        break
-
-            if new_count == 0:
-                no_new_count += 1
-            else:
-                no_new_count = 0
-
-            # 스크롤
-            if len(all_names) < max_stores:
-                self.scroll_down(1)
-                time.sleep(0.5)
-
-        print(f'\n[OK] 총 {len(all_names)}개 가게 이름 수집 완료')
-        return all_names
-
-    def run(self, max_stores=5):
-        """크롤링 실행 - 화면에 보이는 가게 바로 크롤링"""
+    def run_test(self):
+        """테스트 실행 - 1개 매장 방문 후 스킵 로직 확인"""
         print('=' * 60)
-        print('  배달의민족 크롤러')
+        print('  테스트: 1개 매장 방문 후 스킵 로직 확인')
         print('=' * 60)
         print()
 
@@ -581,90 +514,113 @@ class BaeminCrawler:
             print('[ERROR] 가게 목록으로 이동 실패')
             return
 
-        skip_names = []  # 스킵할 가게명 목록 (방문한 가게 + 방금본가게 광고)
-        collected_count = 0
-        retry_count = 0
-        max_retry = 10
+        # 첫 번째 가게 찾기
+        stores = self.get_stores_below_기본순()
+        if not stores:
+            print('[ERROR] 기본순 아래 가게 없음')
+            return
 
-        while collected_count < max_stores and retry_count < max_retry:
-            # 현재 화면에서 모든 가게 찾기
-            all_stores = self.get_stores_below_기본순(passed_기본순=collected_count > 0)
+        first_store = stores[0]
+        print()
+        print('=' * 60)
+        print(f'[1/1] 첫 번째 매장 방문: {first_store["name"]}')
+        print('=' * 60)
 
-            # 스킵 목록에 없는 가게만 필터링
-            available_stores = [s for s in all_stores if s['name'] not in skip_names]
+        # 가게 클릭
+        elem = self.d(descriptionContains=first_store['name'])
+        if elem.exists(timeout=3):
+            elem.click()
+            print(f'      [OK] 클릭')
+            time.sleep(2)
 
-            if available_stores:
-                new_store = available_stores[0]
-                collected_count += 1
-                print(f'\n[{collected_count}/{max_stores}] {new_store["name"]}')
+            # 크롤링
+            store_data = self.crawl_single_store(1)
+            store_data['가게명'] = first_store['name']
+            print(f'      [완료] 상호명: {store_data.get("상호명", "")}')
+        else:
+            print('[ERROR] 첫 번째 매장 클릭 실패')
+            return
 
-                # 가게 클릭
-                elem = self.d(descriptionContains=new_store['name'])
-                if elem.exists(timeout=3):
-                    elem.click()
-                    print(f'      [OK] 클릭')
-                    time.sleep(2)
+        # 뒤로가기 후 잠시 대기
+        time.sleep(1)
 
-                    # 크롤링
-                    store_data = self.crawl_single_store(collected_count)
-                    store_data['가게명'] = new_store['name']
-                    self.stores.append(store_data)
-                    skip_names.append(new_store['name'])  # 방문한 가게 스킵 목록에 추가
-                    print(f'      [완료] 상호명: {store_data.get("상호명", "")}')
+        # "방금 본 가게와 비슷해요!" 찾기
+        print()
+        print('=' * 60)
+        print('[STEP] "방금 본 가게와 비슷해요!" 확인')
+        print('=' * 60)
 
-                    # 뒤로가기 직후 "방금 본 가게와 비슷해요!" 찾아서 아래 4개 매장 스킵
-                    time.sleep(0.5)
+        # 먼저 스크롤해서 "방금 본 가게와 비슷해요!" 보이게 하기
+        for scroll_try in range(5):
+            root = self.get_xml_root()
+            방금본가게_found = False
 
-                    # 스크롤해서 "방금 본 가게와 비슷해요!" 찾기
-                    방금본_found = False
-                    for scroll_try in range(5):
-                        # "방금 본 가게" 있는지 확인
-                        root = self.get_xml_root()
-                        def check_방금본가게(node):
-                            desc = node.attrib.get('content-desc', '')
-                            if '방금 본 가게' in desc:
-                                return True
-                            for child in node:
-                                if check_방금본가게(child):
-                                    return True
-                            return False
+            def find_방금본가게(node):
+                nonlocal 방금본가게_found
+                desc = node.attrib.get('content-desc', '')
+                if '방금 본 가게' in desc:
+                    방금본가게_found = True
+                    bounds = node.attrib.get('bounds', '')
+                    print(f'      [발견] "방금 본 가게와 비슷해요!" - bounds: {bounds}')
+                for child in node:
+                    find_방금본가게(child)
 
-                        if check_방금본가게(root):
-                            방금본_found = True
-                            print(f'      [발견] "방금 본 가게와 비슷해요!"')
-                            break
-                        else:
-                            self.scroll_down(1)
+            find_방금본가게(root)
 
-                    # 4개 매장 스킵 목록에 추가
-                    if 방금본_found:
-                        방금본_stores = self.get_방금본가게_아래_4개()
-                        for s in 방금본_stores:
-                            if s not in skip_names:
-                                skip_names.append(s)
-                                print(f'      [SKIP] 방금본가게 광고: {s}')
-                else:
-                    print(f'      [WARN] 클릭 실패')
-                    collected_count -= 1
-
-                retry_count = 0
-                time.sleep(1)
+            if 방금본가게_found:
+                break
             else:
-                # 새 가게 없으면 스크롤
-                print(f'      스크롤... ({retry_count+1})')
+                print(f'      스크롤 {scroll_try + 1}회... "방금 본 가게" 찾는 중')
                 self.scroll_down(1)
-                retry_count += 1
-                time.sleep(1)
 
-        # 엑셀 저장
-        self.save_to_excel()
+        if not 방금본가게_found:
+            print('[WARN] "방금 본 가게와 비슷해요!" 못 찾음')
+
+        # 건너뛸 4개 매장 확인
+        print()
+        print('=' * 60)
+        print('[RESULT] 건너뛸 매장 4개 (방금 본 가게와 비슷해요! 아래)')
+        print('=' * 60)
+        skip_stores = self.get_방금본가게_아래_4개()
+        if skip_stores:
+            for i, name in enumerate(skip_stores):
+                print(f'      [SKIP {i+1}] {name}')
+        else:
+            print('      (없음)')
+
+        # 다음 검색할 매장 확인
+        print()
+        print('=' * 60)
+        print('[RESULT] 다음 검색할 매장 (스킵 후)')
+        print('=' * 60)
+
+        # 스킵할 매장 목록 (첫 번째 방문 매장 + 방금본가게 아래 4개)
+        skip_names = [first_store['name']] + skip_stores
+        print(f'      [스킵 목록] {skip_names}')
+
+        # 스크롤해서 다음 매장 찾기
+        for scroll_try in range(5):
+            # 화면에 있는 모든 가게 찾기
+            all_stores = self.get_stores_below_기본순(passed_기본순=True)
+
+            # 스킵 목록에 없는 매장만 필터링
+            next_stores = [s for s in all_stores if s['name'] not in skip_names]
+
+            if next_stores:
+                print(f'      [발견] 총 {len(next_stores)}개 매장 (스킵 후)')
+                for i, s in enumerate(next_stores[:5]):
+                    print(f'      [{i+1}] {s["name"]} (y={s["y"]})')
+                break
+            else:
+                print(f'      스크롤 {scroll_try + 1}회...')
+                self.scroll_down(1)
 
         print()
         print('=' * 60)
-        print('  크롤링 완료!')
+        print('  테스트 완료!')
         print('=' * 60)
 
 
 if __name__ == '__main__':
     crawler = BaeminCrawler()
-    crawler.run(max_stores=10)  # 테스트: 10개
+    crawler.run_test()
