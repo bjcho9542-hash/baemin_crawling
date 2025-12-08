@@ -738,12 +738,13 @@ class BaeminCrawler:
                     # 4개 매장 스킵 목록에 추가 (4개 찾을 때까지 스크롤)
                     if 방금본_found:
                         방금본_stores = []
-                        for _ in range(2):  # 최대 2번 시도
+                        방금본_stores = self.get_방금본가게_아래_4개()
+                        print(f'      [DEBUG] 첫 시도: {len(방금본_stores)}개 발견 - {방금본_stores}')
+                        if len(방금본_stores) < 4:
+                            self.d.swipe(540, 1200, 540, 900, duration=0.2)  # 짧은 스크롤
+                            time.sleep(0.3)
                             방금본_stores = self.get_방금본가게_아래_4개()
-                            if len(방금본_stores) >= 4:
-                                break
-                            self.scroll_down(1)
-                            time.sleep(0.5)
+                            print(f'      [DEBUG] 스크롤 후: {len(방금본_stores)}개 발견 - {방금본_stores}')
                         for s in 방금본_stores:
                             if s not in skip_names:
                                 skip_names.append(s)
